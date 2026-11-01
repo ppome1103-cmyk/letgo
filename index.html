@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#f2a04a">
+<meta name="description" content="오늘 하루, 우리 동네 고양이로 살아보기">
+<title>길냥이체험기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --st: env(safe-area-inset-top, 0px);
+    --sb: env(safe-area-inset-bottom, 0px);
+    --sl: env(safe-area-inset-left, 0px);
+    --sr: env(safe-area-inset-right, 0px);
+    --orange: #f2a04a;
+    --ink: #3b2a20;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #cfe8f7;
+    font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    color: var(--ink);
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    touch-action: none; overscroll-behavior: none;
+  }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #touch { position: fixed; inset: 0; z-index: 2; touch-action: none; }
+  #fx { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+  button { font-family: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+
+  /* ───── HUD ───── */
+  .hud { position: fixed; z-index: 5; display: none; }
+  body.playing .hud { display: block; }
+  #missions {
+    top: calc(10px + var(--st)); left: calc(10px + var(--sl));
+    background: rgba(255, 250, 240, 0.9); border-radius: 18px; padding: 8px 10px 6px;
+    box-shadow: 0 4px 14px rgba(60, 40, 20, 0.18); width: min(255px, 62vw);
+  }
+  #nameTag { font-size: 12px; opacity: 0.65; margin: 0 0 3px 4px; }
+  #missionBtn {
+    display: flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 4px; font-size: 16px; width: 100%;
+  }
+  #missionBtn .cnt { margin-left: auto; background: var(--orange); color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 14px; }
+  #missionBtn .arrow { font-size: 11px; opacity: 0.6; transition: transform 0.2s; }
+  #missions.collapsed .arrow { transform: rotate(-90deg); }
+  #missionBtn.pulse { animation: pulse 0.6s ease 2; }
+  @keyframes pulse { 50% { transform: scale(1.08); } }
+  #missionList { list-style: none; margin: 4px 0 0; padding: 0; max-height: 60vh; overflow: hidden; transition: max-height 0.25s; }
+  #missions.collapsed #missionList { max-height: 0; }
+  #missionList li { display: flex; gap: 6px; align-items: center; font-size: 14px; padding: 3px 4px; border-radius: 8px; }
+  #missionList li:active { background: rgba(242, 160, 74, 0.2); }
+  #missionList li b { color: #d9772b; font-weight: normal; margin-left: 3px; }
+  #missionList li.done .tx { text-decoration: line-through; opacity: 0.45; }
+  #missionList .ic { width: 20px; text-align: center; }
+
+  #topRight { top: calc(10px + var(--st)); right: calc(10px + var(--sr)); display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
+  body.playing #topRight { display: flex; }
+  #minimap { width: 112px; height: 112px; border-radius: 16px; border: 3px solid rgba(255, 250, 240, 0.95); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); background: #6b6e75; }
+  .iconRow { display: flex; gap: 6px; }
+  .iconBtn { width: 38px; height: 38px; border-radius: 12px; border: 0; background: rgba(255, 250, 240, 0.9); font-size: 18px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); }
+
+  /* ───── 버튼 ───── */
+  #actions { right: calc(18px + var(--sr)); bottom: calc(22px + var(--sb)); width: 190px; height: 170px; }
+  .act {
+    position: absolute; border: 0; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18), 0 8px 18px rgba(0, 0, 0, 0.2); transition: transform 0.06s; touch-action: none;
+  }
+  .act.down { transform: translateY(4px) scale(0.95); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
+  .act span { font-size: 13px; margin-top: -2px; }
+  #btnJump { right: 0; bottom: 0; width: 98px; height: 98px; background: var(--orange); color: #fff; font-size: 36px; }
+  #btnMeow { right: 108px; bottom: 58px; width: 70px; height: 70px; background: #fff6e6; font-size: 28px; }
+  body:not(.touch) #actions { opacity: 0.85; transform: scale(0.8); transform-origin: bottom right; }
+
+  #joy { position: fixed; z-index: 4; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); border: 3px solid rgba(255, 255, 255, 0.55); display: none; pointer-events: none; }
+  #joy.on { display: block; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255, 250, 240, 0.92); transform: translate(-50%, -50%); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
+  #joyHint {
+    position: fixed; z-index: 4; left: calc(20px + var(--sl)); bottom: calc(210px + var(--sb)); pointer-events: none;
+    background: rgba(255, 250, 240, 0.9); padding: 10px 14px; border-radius: 16px; font-size: 15px; animation: bob 1.2s ease-in-out infinite; display: none;
+  }
+  body.playing.touch #joyHint { display: block; }
+  #joyHint.hide { display: none !important; }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+
+  /* ───── 알림 / 말풍선 ───── */
+  #toast {
+    position: fixed; z-index: 6; left: 50%; top: calc(14px + var(--st)); transform: translate(-50%, -140%);
+    background: rgba(59, 42, 32, 0.88); color: #fff; padding: 9px 16px; border-radius: 20px; font-size: 15px; max-width: min(84vw, 460px); text-align: center;
+    transition: transform 0.3s cubic-bezier(.2, 1.4, .4, 1); pointer-events: none;
+  }
+  #toast.show { transform: translate(-50%, 0); }
+  body.playing #toast { top: calc(178px + var(--st)); }
+  @media (min-width: 760px) { body.playing #toast { top: calc(14px + var(--st)); } }
+  @media (orientation: landscape) and (max-height: 500px) { body.playing #toast { top: calc(10px + var(--st)); max-width: 40vw; font-size: 13px; } }
+  .bubble {
+    position: absolute; left: 0; top: 0; background: #fff; padding: 6px 11px; border-radius: 14px; font-size: 14px; white-space: nowrap;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18); will-change: transform;
+  }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
+  .bubble.cat { background: #fff1dc; }
+  .bubble.cat::after { border-top-color: #fff1dc; }
+  .float { position: absolute; left: 0; top: 0; font-size: 24px; will-change: transform, opacity; }
+
+  /* ───── 타이틀 ───── */
+  #title {
+    position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: calc(28px + var(--st)) 20px calc(26px + var(--sb));
+    background: linear-gradient(180deg, rgba(255, 236, 205, 0.55) 0%, rgba(255, 236, 205, 0) 34%, rgba(255, 236, 205, 0) 52%, rgba(255, 236, 205, 0.85) 100%);
+    transition: opacity 0.4s;
+  }
+  #title.hide { opacity: 0; pointer-events: none; }
+  .logo { text-align: center; }
+  .logo h1 { margin: 0; white-space: nowrap; font-size: clamp(44px, 12vw, 76px); font-weight: normal; color: #fff; letter-spacing: 2px;
+    text-shadow: 0 4px 0 #d9772b, 0 7px 0 rgba(90, 50, 20, 0.35), 0 10px 20px rgba(90, 50, 20, 0.3); }
+  .logo p { margin: 8px 0 0; font-size: clamp(15px, 4vw, 19px); color: #5a3d2b; background: rgba(255, 250, 240, 0.85); display: inline-block; padding: 5px 14px; border-radius: 20px; }
+  .panel { width: min(420px, 100%); background: rgba(255, 250, 240, 0.94); border-radius: 26px; padding: 16px 16px 14px; box-shadow: 0 8px 26px rgba(90, 50, 20, 0.22); text-align: center; }
+  .nameRow { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 22px; }
+  .nameRow small { font-size: 14px; opacity: 0.6; }
+  #btnDice { border: 0; background: #ffe7c7; border-radius: 12px; width: 40px; height: 40px; font-size: 20px; }
+  .furs { display: flex; justify-content: center; gap: 10px; margin: 12px 0 4px; }
+  .fur { width: 46px; height: 46px; border-radius: 50%; border: 3px solid transparent; background: linear-gradient(135deg, var(--c1) 55%, var(--c2) 55%); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); }
+  .fur.on { border-color: #fff; outline: 3px solid var(--orange); transform: scale(1.1); }
+  #furName { font-size: 14px; opacity: 0.7; }
+  #btnStart { margin-top: 12px; width: 100%; border: 0; border-radius: 18px; padding: 14px; font-size: 22px; background: var(--orange); color: #fff; box-shadow: 0 5px 0 #c9742c; }
+  #btnStart:active { transform: translateY(3px); box-shadow: 0 2px 0 #c9742c; }
+  #controlsHelp { margin-top: 12px; font-size: 13px; line-height: 1.6; opacity: 0.7; }
+
+  /* ───── 엔딩 ───── */
+  #endCard { position: fixed; inset: 0; z-index: 12; display: none; align-items: center; justify-content: center; background: rgba(40, 25, 15, 0.45); padding: 20px; }
+  #endCard.show { display: flex; animation: pop 0.4s cubic-bezier(.2, 1.4, .4, 1); }
+  @keyframes pop { from { transform: scale(0.8); opacity: 0; } }
+  #endCard .panel h2 { margin: 2px 0 4px; font-weight: normal; font-size: 28px; color: #d9772b; }
+  #endStats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  #endStats div { background: #fff1dc; border-radius: 14px; padding: 8px; font-size: 15px; }
+  #endStats span { display: block; font-size: 22px; }
+  #shareBox { white-space: pre-wrap; text-align: left; background: #fff; border-radius: 14px; padding: 10px 12px; font-size: 13px; line-height: 1.5; user-select: text; -webkit-user-select: text; }
+  .btnRow { display: flex; gap: 8px; margin-top: 12px; }
+  .btnRow button { flex: 1; border: 0; border-radius: 14px; padding: 11px 6px; font-size: 16px; background: #ffe7c7; }
+  .btnRow button.main { background: var(--orange); color: #fff; }
+
+  #loading { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: #ffe9cc; font-size: 22px; transition: opacity 0.4s; }
+  body.ready #loading { opacity: 0; pointer-events: none; }
+  #loading .paw { display: inline-block; animation: bob 0.8s ease-in-out infinite; }
+  #error { display: none; position: fixed; inset: 0; z-index: 30; background: #ffe9cc; padding: 30px; text-align: center; font-size: 18px; align-items: center; justify-content: center; }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    #title { flex-direction: row; align-items: center; justify-content: space-around; }
+    .panel { width: min(380px, 48%); padding: 12px; }
+    #controlsHelp { display: none; }
+    .logo h1 { font-size: clamp(36px, 7vw, 64px); }
+    #joyHint { bottom: calc(24px + var(--sb)); }
+    #minimap { width: 92px; height: 92px; }
+    #missionList li { font-size: 13px; padding: 2px 4px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="touch"></div>
+<div id="fx"></div>
+
+<div id="missions" class="hud collapsed">
+  <div id="nameTag"></div>
+  <button id="missionBtn"><span>📋 오늘의 할 일</span><span class="arrow">▼</span><span class="cnt" id="missionCount">0/7</span></button>
+  <ul id="missionList"></ul>
+</div>
+
+<div id="topRight" class="hud">
+  <canvas id="minimap" width="224" height="224"></canvas>
+  <div class="iconRow">
+    <button class="iconBtn" id="btnHelp" aria-label="도움말">❔</button>
+    <button class="iconBtn" id="btnSound" aria-label="소리">🔊</button>
+    <button class="iconBtn" id="btnFull" aria-label="전체화면">⛶</button>
+  </div>
+</div>
+
+<div id="actions" class="hud">
+  <button class="act" id="btnMeow" aria-label="야옹">😺<span>야옹</span></button>
+  <button class="act" id="btnJump" aria-label="점프">🐾<span>점프</span></button>
+</div>
+<div id="joy"><div id="joyKnob"></div></div>
+<div id="joyHint" class="hide">👇 화면 왼쪽을 드래그해서 걸어봐!</div>
+<div id="toast"></div>
+
+<div id="title">
+  <div class="logo">
+    <h1>길냥이체험기</h1>
+    <p>오늘 하루, 우리 동네 고양이로 살아보기 🐾</p>
+  </div>
+  <div class="panel">
+    <div class="nameRow"><small>내 이름</small><span id="catName"></span><button id="btnDice" aria-label="이름 바꾸기">🎲</button></div>
+    <div class="furs">
+      <button class="fur" data-fur="cheese" aria-label="치즈"></button>
+      <button class="fur" data-fur="mackerel" aria-label="고등어"></button>
+      <button class="fur" data-fur="tuxedo" aria-label="턱시도"></button>
+      <button class="fur" data-fur="calico" aria-label="삼색이"></button>
+      <button class="fur" data-fur="black" aria-label="까망"></button>
+    </div>
+    <div id="furName"></div>
+    <button id="btnStart">시작하기 🐾</button>
+    <div id="controlsHelp"></div>
+  </div>
+</div>
+
+<div id="endCard">
+  <div class="panel">
+    <h2>오늘도 잘 살았다냥 🐾</h2>
+    <div>할 일을 전부 끝냈어!</div>
+    <div id="endStats"></div>
+    <div id="shareBox"></div>
+    <div class="btnRow">
+      <button id="btnShare" class="main">자랑 문구 복사</button>
+      <button id="btnContinue">계속 놀기</button>
+    </div>
+    <div class="btnRow"><button id="btnNewDay">🌅 새로운 하루 시작</button></div>
+  </div>
+</div>
+
+<div id="loading"><span><span class="paw">🐾</span> 동네 만드는 중…</span></div>
+<div id="error"></div>
+
+<script>
+  window.addEventListener('error', function (e) {
+    var el = document.getElementById('error');
+    el.style.display = 'flex';
+    el.textContent = '앗, 문제가 생겼어요 😿 ' + (e.message || '') + ' — 새로고침 해보세요.';
+  });
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
