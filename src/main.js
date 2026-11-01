@@ -620,7 +620,7 @@ let last = performance.now();
 let fpsAcc = 0, fpsN = 0, lowStreak = 0;
 let elapsed = 0;
 function frame(now) {
-  const rawDt = (now - last) / 1000;
+  const rawDt = Math.max(0, (now - last) / 1000);
   last = now;
   const dt = Math.min(0.05, rawDt);
   elapsed += dt;

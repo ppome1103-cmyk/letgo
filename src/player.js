@@ -65,7 +65,7 @@ export class CatController {
     const ddx = tvx - this.vel.x, ddz = tvz - this.vel.z;
     const dd = Math.hypot(ddx, ddz);
     const maxD = accel * dt;
-    if (dd <= maxD) {
+    if (dd <= maxD || dd < 1e-9) {
       this.vel.x = tvx;
       this.vel.z = tvz;
     } else {

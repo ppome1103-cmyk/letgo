@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ff8a5c">
+<title>재미 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root { --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px); --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px); --main: #ff8a5c; --ink: #3b2a20; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff0dc; font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif; color: var(--ink);
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none; }
+  button { font-family: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #touch { position: fixed; inset: 0; z-index: 2; touch-action: none; }
+  #fx { position: fixed; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+  #speed { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+    background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0.55) 0deg 0.6deg, transparent 0.6deg 7deg);
+    -webkit-mask: radial-gradient(circle at 50% 50%, transparent 32%, #000 78%); mask: radial-gradient(circle at 50% 50%, transparent 32%, #000 78%); }
+
+  .hud { display: none; position: fixed; z-index: 5; }
+  body.playing .hud { display: block; }
+  #hudTop { top: calc(10px + var(--st)); left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; }
+  #hudMain { font-size: 30px; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,0.25), 0 0 10px rgba(0,0,0,0.25); white-space: nowrap; }
+  #hudSub { font-size: 14px; background: rgba(255,250,240,0.88); padding: 3px 12px; border-radius: 12px; display: inline-block; margin-top: 2px; white-space: nowrap; }
+  #topBtns { top: calc(10px + var(--st)); left: calc(10px + var(--sl)); }
+  #topBtns2 { top: calc(10px + var(--st)); right: calc(10px + var(--sr)); }
+  .iconBtn { width: 40px; height: 40px; border-radius: 12px; border: 0; background: rgba(255,250,240,0.92); font-size: 18px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+
+  #actions { right: calc(18px + var(--sr)); bottom: calc(22px + var(--sb)); width: 190px; height: 170px; }
+  .act { position: absolute; border: 0; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.18), 0 8px 18px rgba(0,0,0,0.2); transition: transform 0.06s; touch-action: none; }
+  .act.down { transform: translateY(4px) scale(0.95); box-shadow: 0 2px 0 rgba(0,0,0,0.18); }
+  .act span { font-size: 13px; margin-top: -2px; }
+  #btnJump { right: 0; bottom: 0; width: 98px; height: 98px; background: var(--main); color: #fff; font-size: 34px; }
+  #btnMeow { right: 108px; bottom: 58px; width: 74px; height: 74px; background: #fff6e6; font-size: 28px; }
+  body:not(.touch) #actions { opacity: 0.85; transform: scale(0.8); transform-origin: bottom right; }
+  #joy { position: fixed; z-index: 4; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255,255,255,0.22); border: 3px solid rgba(255,255,255,0.6); display: none; pointer-events: none; }
+  #joy.on { display: block; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,250,240,0.92); transform: translate(-50%, -50%); }
+  #joyHint { position: fixed; z-index: 4; left: calc(20px + var(--sl)); bottom: calc(210px + var(--sb)); pointer-events: none; background: rgba(255,250,240,0.9); padding: 10px 14px; border-radius: 16px; font-size: 15px; display: none; animation: bob 1.2s ease-in-out infinite; }
+  body.playing.touch #joyHint { display: block; }
+  #joyHint.hide { display: none !important; }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+
+  #hint { position: fixed; z-index: 6; left: 50%; top: calc(96px + var(--st)); transform: translate(-50%, -20px); opacity: 0; transition: all 0.3s;
+    background: rgba(59,42,32,0.88); color: #fff; padding: 9px 16px; border-radius: 18px; font-size: 15px; max-width: min(88vw, 480px); text-align: center; pointer-events: none; }
+  #hint.show { opacity: 1; transform: translate(-50%, 0); }
+  .pop { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); font-size: 30px; color: #fff; white-space: nowrap;
+    text-shadow: 0 3px 0 #d9572b, 0 6px 14px rgba(0,0,0,0.3); animation: popup 0.9s ease-out forwards; }
+  .pop.big { font-size: 40px; text-shadow: 0 4px 0 #b3179a, 0 8px 18px rgba(0,0,0,0.3); }
+  .pop.cp { color: #fff; text-shadow: 0 3px 0 #3fae5a; top: 30%; }
+  .pop.ouch { color: #fff; text-shadow: 0 3px 0 #555; }
+  @keyframes popup { 0% { transform: translate(-50%, -30%) scale(0.5); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-50%, -110%) scale(1); opacity: 0; } }
+
+  /* 메뉴 */
+  #menu { position: fixed; inset: 0; z-index: 10; overflow-y: auto; touch-action: pan-y; padding: calc(26px + var(--st)) 18px calc(26px + var(--sb));
+    background: radial-gradient(circle at 20% 10%, #ffe1c2, transparent 50%), radial-gradient(circle at 90% 80%, #ffd6ea, transparent 50%), #fff6e6; transition: opacity 0.3s; }
+  #menu.hide { opacity: 0; pointer-events: none; }
+  #menu h1 { text-align: center; font-weight: normal; font-size: clamp(38px, 11vw, 60px); margin: 0; color: #fff; text-shadow: 0 4px 0 #d9572b, 0 8px 18px rgba(120,50,20,0.3); }
+  #menu .sub { text-align: center; margin: 6px 0 20px; font-size: 16px; opacity: 0.75; }
+  .cards { display: grid; gap: 14px; max-width: 900px; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { border: 0; text-align: left; border-radius: 24px; padding: 18px 18px 16px; color: #fff; box-shadow: 0 8px 0 rgba(0,0,0,0.12), 0 12px 24px rgba(0,0,0,0.12); transition: transform 0.1s; }
+  .card:active { transform: translateY(4px); }
+  .card .em { font-size: 44px; }
+  .card h2 { margin: 4px 0 4px; font-weight: normal; font-size: 26px; }
+  .card p { margin: 0; font-size: 15px; opacity: 0.95; line-height: 1.45; }
+  .card .tag { display: inline-block; margin-top: 10px; background: rgba(255,255,255,0.25); padding: 3px 10px; border-radius: 10px; font-size: 13px; }
+  .c1 { background: linear-gradient(135deg, #ff8a5c, #ff5a7a); }
+  .c2 { background: linear-gradient(135deg, #8f7bff, #ff6fb5); }
+  .c3 { background: linear-gradient(135deg, #3fb6e8, #6fdcb0); }
+  .foot { text-align: center; margin-top: 18px; font-size: 13px; opacity: 0.6; line-height: 1.6; }
+
+  #loading { position: fixed; inset: 0; z-index: 11; display: none; align-items: center; justify-content: center; background: #fff0dc; font-size: 22px; }
+  #loading.show { display: flex; }
+  #result { position: fixed; inset: 0; z-index: 12; display: none; align-items: center; justify-content: center; background: rgba(40,25,15,0.45); padding: 20px; }
+  #result.show { display: flex; animation: pop 0.4s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop { from { transform: scale(0.8); opacity: 0; } }
+  .panel { width: min(400px, 100%); background: rgba(255,250,240,0.97); border-radius: 26px; padding: 18px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+  .panel h2 { margin: 0 0 10px; font-weight: normal; font-size: 28px; color: #d9572b; }
+  #resultRows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #resultRows div { background: #fff1dc; border-radius: 14px; padding: 8px; font-size: 15px; }
+  #resultRows span { display: block; font-size: 22px; }
+  .btnRow { display: flex; gap: 8px; margin-top: 14px; }
+  .btnRow button { flex: 1; border: 0; border-radius: 14px; padding: 12px; font-size: 17px; background: #ffe7c7; }
+  .btnRow button.main { background: var(--main); color: #fff; }
+  @media (orientation: landscape) and (max-height: 500px) { #hudMain { font-size: 24px; } #joyHint { bottom: calc(24px + var(--sb)); } #hint { top: calc(70px + var(--st)); } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="speed"></div>
+<div id="touch"></div>
+<div id="fx"></div>
+
+<div id="hudTop" class="hud"><div id="hudMain"></div><div id="hudSub"></div></div>
+<div id="topBtns" class="hud"><button class="iconBtn" id="btnBack" aria-label="실험실로">🏠</button></div>
+<div id="topBtns2" class="hud"><button class="iconBtn" id="btnSound" aria-label="소리">🔊</button></div>
+<div id="actions" class="hud">
+  <button class="act" id="btnMeow">💨<span>액션</span></button>
+  <button class="act" id="btnJump">⤴<span>점프</span></button>
+</div>
+<div id="joy"><div id="joyKnob"></div></div>
+<div id="joyHint" class="hide">👇 화면 왼쪽을 드래그해서 움직여!</div>
+<div id="hint"></div>
+
+<div id="menu">
+  <h1>재미 실험실</h1>
+  <div class="sub">콩떡이와 1분씩 해보고, 제일 재밌는 걸 골라줘! 🧪</div>
+  <div class="cards">
+    <button class="card c1" data-mode="parkour">
+      <div class="em">🏃</div><h2>옥상 파쿠르</h2>
+      <p>벽 차고 점프, 슬라이딩, 줄 타기, 점프대!<br>옥상 코스를 최대한 빨리 달려봐</p>
+      <span class="tag">손맛 · 타임어택</span>
+    </button>
+    <button class="card c2" data-mode="chaos">
+      <div class="em">💥</div><h2>와르르 대혼란</h2>
+      <p>햄스터 볼을 타고 도미노, 블록 탑, 캔 피라미드를<br>60초 동안 전부 무너뜨려!</p>
+      <span class="tag">물리 · 연쇄 콤보</span>
+    </button>
+    <button class="card c3" data-mode="glide">
+      <div class="em">🪂</div><h2>바람 타고 활공</h2>
+      <p>1.6km 섬 위를 행글라이더로!<br>상승기류 타고 링 통과하며 멀리멀리</p>
+      <span class="tag">넓은 맵 · 비행</span>
+    </button>
+  </div>
+  <div class="foot">폰: 왼쪽 드래그 이동 · 오른쪽 드래그 시점 · 버튼으로 점프/액션<br>PC: WASD · 스페이스 · E · 마우스 드래그</div>
+</div>
+
+<div id="loading">⏳ 준비 중…</div>
+<div id="result"><div class="panel">
+  <h2 id="resultTitle"></h2>
+  <div id="resultRows"></div>
+  <div class="btnRow"><button id="btnRetry" class="main">🔁 다시 하기</button><button id="btnMenu">🧪 다른 실험</button></div>
+</div></div>
+
+<script>
+  window.addEventListener('error', function (e) {
+    var h = document.getElementById('hint');
+    h.textContent = '😿 오류: ' + (e.message || '') ;
+    h.classList.add('show');
+  });
+</script>
+<script type="module" src="./lab.js"></script>
+</body>
+</html>
